@@ -1,12 +1,11 @@
-library(readr)
-library(dplyr)
-library(lubridate)
-library(stringr)
+library(pacman)
+p_load(readr, dplyr, lubridate, stringr)
 
 import::from("sjmisc", "frq")
 
 data <- 
   bind_rows(
+    
     bind_rows(
       
       bind_rows(
@@ -92,13 +91,13 @@ data <-
           mutate(year = 2022, quarter = quarter(ymd("2022-10-01"))),
         
         read_csv("data-raw/complaints/cars-srsa-open-data-animal-related-complaints-jan-to-mar-2023.csv.zip") %>%
-          mutate(year = 2023, quarter = quarter(ymd("2022-01-01"))),
+          mutate(year = 2023, quarter = quarter(ymd("2023-01-01"))),
         
         read_csv("data-raw/complaints/cars-srsa-open-data-animal-related-complaints-apr-to-jun-2023.csv.zip") %>%
-          mutate(year = 2023, quarter = quarter(ymd("2022-04-01"))),
+          mutate(year = 2023, quarter = quarter(ymd("2023-04-01"))),
         
         read_csv("data-raw/complaints/cars-srsa-open-data-animal-related-complaints-jul-to-sep-2023.csv.zip") %>%
-          mutate(year = 2023, quarter = quarter(ymd("2022-07-01")))
+          mutate(year = 2023, quarter = quarter(ymd("2023-07-01")))
         
       )  %>% 
         select(-Index) 
@@ -118,6 +117,7 @@ data <-
       
       read_csv("data-raw/complaints/cars-srsa-open-data-animal-related-complaints-jan-mar-2021.zip") %>% 
         mutate(year = 2021, quarter = quarter(ymd("2021-01-01")))
+      
     ) %>% 
       select(-Index) %>% 
       rename(
@@ -126,13 +126,28 @@ data <-
         reporting_level = `Reporting Level`,
         suburb = `Suburb`)
   ) %>% 
+  
   relocate(year, quarter) %>% 
   arrange(year, quarter)
 
 data %>% 
+  filter(suburb == "NULL") %>% 
+  nrow()
+
+data <- data %>% 
+  mutate(suburb = if_else(suburb == "NULL", NA_character_, suburb))
+
+data %>% 
+  filter(is.na(suburb)) %>% 
+  nrow()
+
+data <- data %>% 
+  filter(!is.na(suburb)) 
+
+data %>% 
   filter(! nature == "Animal") %>% 
   nrow()
-  
+
 data <- data %>% 
   filter(nature == "Animal") %>% 
   select(-nature) 
@@ -143,7 +158,13 @@ data %>%
 
 data <- data %>% 
   filter(! (type == "Attack" & reporting_level == "Not An Attack") )
-  
+
+data %>% 
+  filter(reporting_level == "NULL") %>% 
+  nrow()
+
+data <- data %>% 
+  mutate(reporting_level = if_else(reporting_level == "NULL", NA_character_, reporting_level))
 
 names(data)
 
@@ -157,6 +178,7 @@ data %>%
 
 frq(data, type, sort.frq = "desc")
 frq(data, reporting_level, sort.frq = "desc")
+frq(data, suburb, sort.frq = "desc")
 
 temp <- data %>% 
   janitor::tabyl(reporting_level, type)
